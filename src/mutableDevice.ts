@@ -1162,6 +1162,7 @@ export class MutableDevice {
       }
     }
     this.addSiblingTagLists();
+    this.promoteFirstChildToMain();
     this.createMainEndpoint();
     this.createChildEndpoints();
     for (const [endpoint] of this.mutableDevices) {
@@ -1218,6 +1219,31 @@ export class MutableDevice {
       if (deviceTypesMap.has(colorTemperatureLight.code) && deviceTypesMap.has(extendedColorLight.code)) deviceTypesMap.delete(colorTemperatureLight.code);
       device.deviceTypes = Array.from(deviceTypesMap.values());
     }
+    return this;
+  }
+
+  /**
+   * In server mode the main endpoint cannot be a bridged node. When the child endpoints could not be merged into it (overlapping clusters, for example a TV with a Speaker child that both have OnOff)
+   * the main endpoint would have no device type: move the first child endpoint into the main endpoint, the other children stay below it.
+   *
+   * @returns {this} The current instance for chaining.
+   */
+  private promoteFirstChildToMain(): this {
+    if (this.mode !== 'server') return this;
+    const main = this.mutableDevices.get('');
+    if (!main || main.deviceTypes.some((deviceType) => deviceType.code !== bridgedNode.code)) return this;
+    const first = Array.from(this.mutableDevices.entries()).find(([endpoint]) => endpoint !== '');
+    if (!first) return this;
+    const [name, child] = first;
+    main.deviceTypes = [...main.deviceTypes, ...child.deviceTypes];
+    main.tagList.push(...child.tagList);
+    main.clusterServersIds.push(...child.clusterServersIds);
+    main.clusterServersObjs.push(...child.clusterServersObjs);
+    main.clusterClientsIds.push(...child.clusterClientsIds);
+    main.clusterClientsObjs.push(...child.clusterClientsObjs);
+    main.commandHandlers.push(...child.commandHandlers);
+    main.subscribeHandlers.push(...child.subscribeHandlers);
+    this.mutableDevices.delete(name);
     return this;
   }
 
