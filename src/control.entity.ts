@@ -24,7 +24,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 /* oxlint-disable typescript/restrict-template-expressions */
 
-import { colorTemperatureLight, dimmableLight, extendedColorLight, type MatterbridgeEndpoint, type PrimitiveTypes } from 'matterbridge';
+import { basicVideoPlayer, colorTemperatureLight, dimmableLight, extendedColorLight, type MatterbridgeEndpoint, mountedOnOffControl, type PrimitiveTypes } from 'matterbridge';
 import { CYAN, db, debugStringify, nf, wr } from 'matterbridge/logger';
 import type { ActionContext } from 'matterbridge/matter';
 import { ColorControl, LevelControl } from 'matterbridge/matter/clusters';
@@ -124,8 +124,17 @@ export function addControlEntity(
     .forEach((hassDomain) => {
       if (!hassDomain.deviceType || !hassDomain.clusterId) return;
       endpointName = entity.entity_id;
-      platform.log.debug(`+ ${domain} device ${CYAN}${hassDomain.deviceType.name}${db} cluster ${CYAN}${getClusterNameById(hassDomain.clusterId)}${db}`);
-      mutableDevice.addDeviceTypes(endpointName, hassDomain.deviceType);
+      // Optional device type override for a switch entity (config entityDeviceTypes): 'tv' = Basic Video Player (shown as a TV), 'switch' = Mounted On/Off Control (shown as a switch).
+      const overrideKey = domain === 'switch' ? Object.keys(platform.config.entityDeviceTypes ?? {}).find((k) => entity.entity_id.includes(k)) : undefined;
+      const override = overrideKey ? platform.config.entityDeviceTypes[overrideKey] : undefined;
+      const deviceType = override === 'tv' ? basicVideoPlayer : override === 'switch' ? mountedOnOffControl : hassDomain.deviceType;
+      platform.log.debug(`+ ${domain} device ${CYAN}${deviceType.name}${db} cluster ${CYAN}${getClusterNameById(hassDomain.clusterId)}${db}`);
+      mutableDevice.addDeviceTypes(endpointName, deviceType);
+      if (override === 'tv') {
+        // A Basic Video Player needs MediaPlayback and KeypadInput. Their commands are ignored for a switch, only OnOff drives the entity.
+        mutableDevice.addBasicVideoPlayer(endpointName);
+        mutableDevice.addKeypadInput(endpointName);
+      }
       mutableDevice.addClusterServerIds(endpointName, hassDomain.clusterId);
       if (state.attributes && isValidString(state.attributes['friendly_name'])) mutableDevice.setFriendlyName(endpointName, state.attributes['friendly_name']);
     });

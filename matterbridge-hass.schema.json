@@ -239,6 +239,13 @@
       "additionalProperties": { "type": "string" },
       "default": {}
     },
+    "entityDeviceTypes": {
+      "title": "Entity Device Types",
+      "description": "Map of switch entity_id substring to the Matter device type: \"tv\" (Basic Video Player, shown as a TV by SmartThings) or \"switch\" (Mounted On/Off Control, shown as a switch). Only OnOff is driven, so the entity must be a switch.",
+      "type": "object",
+      "additionalProperties": { "type": "string", "enum": ["tv", "switch"] },
+      "default": {}
+    },
     "entityNameAsProductName": {
       "title": "Entity Name As Product Name",
       "description": "Use the entity name as the Matter product name instead of the domain. Some controllers (Samsung SmartThings, LG ThinQ) show the product name for server mode nodes.",

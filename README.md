@@ -51,6 +51,7 @@ What is added (see [Config](#config)):
 - `serverModeDomains`: individual and split entities of the listed domains (for example `switch`, `sensor`) are created in *server mode*, as the upstream already does for the vacuum. Every entity becomes its own Matter node with its own QR code, so LG ThinQ (and SmartThings) pair them one by one instead of through a bridge.
 - `deviceIdentityRules`: override the Matter vendor/product of individual and split entities (first matching rule wins, matched by domain and/or an entity_id substring). LG ThinQ only keeps devices whose identity exists in the CSA Distributed Compliance Ledger, for example vendorId 4142 with productId 8800 (smart plug) or 8192 (temperature and humidity sensor).
 - `entityNameOverrides`: set the name shown on the controller for entities whose Home Assistant name you do not want to change.
+- `entityDeviceTypes`: choose the Matter device type of a `switch` entity (matched by an entity_id substring): `tv` exposes it as a Basic Video Player (SmartThings shows a TV, on/off only) and `switch` as a Mounted On/Off Control (shown as a switch instead of a plug that is grouped with lights). The default stays the plug-in unit.
 - `entityNameAsProductName`: use the entity name as the Matter product name instead of the domain (SmartThings shows the product name for server mode nodes).
 
 Example, everything that is a switch or sensor gets its own node and the LG identity:
@@ -63,7 +64,8 @@ Example, everything that is a switch or sensor gets its own node and the LG iden
     { "domain": "switch", "vendorId": 4142, "vendorName": "LG", "productId": 8800 },
     { "domain": "sensor", "vendorId": 4142, "vendorName": "LG", "productId": 8192 }
   ],
-  "entityNameOverrides": { "boiler_temp": "Boiler temperature" }
+  "entityNameOverrides": { "boiler_temp": "Boiler temperature" },
+  "entityDeviceTypes": { "living_room_tv": "tv", "printer_pause": "switch" }
 }
 ```
 

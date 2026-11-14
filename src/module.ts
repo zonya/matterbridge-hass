@@ -119,6 +119,7 @@ export interface HomeAssistantPlatformConfig extends PlatformConfig {
   serverModeDomains: string[];
   deviceIdentityRules: DeviceIdentityRule[];
   entityNameOverrides: Record<string, string>;
+  entityDeviceTypes: Record<string, 'tv' | 'switch'>;
   entityNameAsProductName: boolean;
   discardHiddenEntities: boolean;
   virtualControlLabel: string;
@@ -266,6 +267,9 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
         )
       : [];
     this.config.entityNameOverrides = isValidObject(this.config.entityNameOverrides, 1) ? this.config.entityNameOverrides : {};
+    this.config.entityDeviceTypes = isValidObject(this.config.entityDeviceTypes, 1)
+      ? Object.fromEntries(Object.entries(this.config.entityDeviceTypes).filter(([k, v]) => isValidString(k, 1) && (v === 'tv' || v === 'switch')))
+      : {};
     this.config.entityNameAsProductName = isValidBoolean(this.config.entityNameAsProductName) ? this.config.entityNameAsProductName : false;
     this.config.discardHiddenEntities = isValidBoolean(this.config.discardHiddenEntities) ? this.config.discardHiddenEntities : false;
     this.config.virtualControlLabel = isValidString(this.config.virtualControlLabel, 1) ? this.config.virtualControlLabel : '';
