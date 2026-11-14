@@ -44,11 +44,11 @@ Features:
 
 ## About this fork (zonya/matterbridge-hass)
 
-This is a fork of [Luligu/matterbridge-hass](https://github.com/Luligu/matterbridge-hass) based on release 1.7.0. Upstream behavior is unchanged by default; every addition below is opt-in through the plugin config. It was made to expose a Home Assistant boiler, switches and sensors to **Samsung SmartThings** and **LG ThinQ**, which both handle one big Matter bridge badly.
+This is a fork of [Luligu/matterbridge-hass](https://github.com/Luligu/matterbridge-hass) based on release 1.7.0. Upstream behavior is unchanged by default; every addition below is opt-in through the plugin config. The main reason is **LG ThinQ**: in my testing it does not work with devices behind a bridge, so every entity is exposed as its own Matter node (server mode), and ThinQ only keeps devices with an identity it knows. Samsung SmartThings also works well with the individual nodes. It was made to expose a Home Assistant boiler, switches and sensors to both.
 
 What is added (see [Config](#config)):
 
-- `serverModeDomains`: individual and split entities of the listed domains (for example `switch`, `sensor`) are created in *server mode*, as the upstream already does for the vacuum. Every entity becomes its own Matter node with its own QR code, so SmartThings and ThinQ pair them one by one instead of through a bridge.
+- `serverModeDomains`: individual and split entities of the listed domains (for example `switch`, `sensor`) are created in *server mode*, as the upstream already does for the vacuum. Every entity becomes its own Matter node with its own QR code, so LG ThinQ (and SmartThings) pair them one by one instead of through a bridge.
 - `deviceIdentityRules`: override the Matter vendor/product of individual and split entities (first matching rule wins, matched by domain and/or an entity_id substring). LG ThinQ only keeps devices whose identity exists in the CSA Distributed Compliance Ledger, for example vendorId 4142 with productId 8800 (smart plug) or 8192 (temperature and humidity sensor).
 - `entityNameOverrides`: set the name shown on the controller for entities whose Home Assistant name you do not want to change.
 - `entityNameAsProductName`: use the entity name as the Matter product name instead of the domain (SmartThings shows the product name for server mode nodes).
