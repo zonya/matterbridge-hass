@@ -122,6 +122,7 @@ export interface HomeAssistantPlatformConfig extends PlatformConfig {
   entityDeviceTypes: Record<string, 'tv' | 'switch'>;
   tvRemoteEntities: Record<string, string>;
   vacuumCleanModes: boolean;
+  tvSpeaker: boolean;
   entityNameAsProductName: boolean;
   discardHiddenEntities: boolean;
   virtualControlLabel: string;
@@ -278,6 +279,7 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
       ? Object.fromEntries(Object.entries(this.config.tvRemoteEntities).filter(([k, v]) => isValidString(k, 1) && isValidString(v, 3) && v.startsWith('media_player.')))
       : {};
     this.config.vacuumCleanModes = isValidBoolean(this.config.vacuumCleanModes) ? this.config.vacuumCleanModes : true;
+    this.config.tvSpeaker = isValidBoolean(this.config.tvSpeaker) ? this.config.tvSpeaker : false;
     this.config.entityNameAsProductName = isValidBoolean(this.config.entityNameAsProductName) ? this.config.entityNameAsProductName : false;
     this.config.discardHiddenEntities = isValidBoolean(this.config.discardHiddenEntities) ? this.config.discardHiddenEntities : false;
     this.config.virtualControlLabel = isValidString(this.config.virtualControlLabel, 1) ? this.config.virtualControlLabel : '';
@@ -1377,7 +1379,7 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
     const playback =
       state.state === 'playing' ? MediaPlayback.PlaybackState.Playing : state.state === 'paused' ? MediaPlayback.PlaybackState.Paused : MediaPlayback.PlaybackState.NotPlaying;
     await main.setAttribute(MediaPlayback.id, 'currentState', playback, main.log);
-    const speakerEndpoint = find(link.speaker);
+    const speakerEndpoint = link.speaker ? find(link.speaker) : undefined;
     if (!speakerEndpoint) return;
     const volume = state.attributes['volume_level'];
     if (isValidNumber(volume, 0, 1)) await speakerEndpoint.setAttribute(LevelControl.id, 'currentLevel', Math.min(254, Math.max(1, Math.round(volume * 254))), speakerEndpoint.log);

@@ -253,6 +253,12 @@
       "additionalProperties": { "type": "string" },
       "default": {}
     },
+    "tvSpeaker": {
+      "title": "TV Speaker",
+      "description": "Experimental: add a child Speaker endpoint (volume and mute) to a switch exposed as a TV with tvRemoteEntities. SmartThings did not wire the speaker component for it in testing, so it is off by default.",
+      "type": "boolean",
+      "default": false
+    },
     "vacuumCleanModes": {
       "title": "Vacuum Clean Modes",
       "description": "Expose the optional RvcCleanMode cluster (Vacuum / Vacuum Max selector). Turn it off for a vacuum entity that is not a real vacuum, for example a 3D printer.",

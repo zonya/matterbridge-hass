@@ -125,20 +125,25 @@ function addTvRemoteHandlers(platform: HomeAssistantPlatform, mutableDevice: Mut
   mutableDevice.addCommandHandler(entityId, 'MediaPlayback.next', () => call('media_player', 'media_next_track'));
   mutableDevice.addCommandHandler(entityId, 'MediaPlayback.previous', () => call('media_player', 'media_previous_track'));
 
-  // A child Speaker endpoint (SmartThings shows a TV with a speaker): LevelControl is the volume and OnOff is the mute (on = not muted).
-  const speakerEndpoint = `${entityId}_speaker`;
-  mutableDevice.addDeviceTypes(speakerEndpoint, speaker);
-  mutableDevice.setFriendlyName(speakerEndpoint, 'Speaker');
-  mutableDevice.addOnOff(speakerEndpoint, true);
-  mutableDevice.addClusterServerIds(speakerEndpoint, LevelControl.id);
-  const setVolume = (data: CommandHandlerData): void => {
-    if ('level' in data.request && typeof data.request.level === 'number') call('media_player', 'volume_set', { volume_level: Math.min(1, Math.max(0, data.request.level / 254)) });
-  };
-  mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevelWithOnOff', setVolume);
-  mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevel', setVolume);
-  mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.on', () => call('media_player', 'volume_mute', { is_volume_muted: false }));
-  mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.off', () => call('media_player', 'volume_mute', { is_volume_muted: true }));
-  platform.tvLinks.set(player, { main: entityId, speaker: speakerEndpoint });
+  if (platform.config.tvSpeaker) {
+    // A child Speaker endpoint (SmartThings shows a TV with a speaker): LevelControl is the volume and OnOff is the mute (on = not muted).
+    const speakerEndpoint = `${entityId}_speaker`;
+    mutableDevice.addDeviceTypes(speakerEndpoint, speaker);
+    mutableDevice.setFriendlyName(speakerEndpoint, 'Speaker');
+    mutableDevice.addOnOff(speakerEndpoint, true);
+    mutableDevice.addClusterServerIds(speakerEndpoint, LevelControl.id);
+    const setVolume = (data: CommandHandlerData): void => {
+      if ('level' in data.request && typeof data.request.level === 'number')
+        call('media_player', 'volume_set', { volume_level: Math.min(1, Math.max(0, data.request.level / 254)) });
+    };
+    mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevelWithOnOff', setVolume);
+    mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevel', setVolume);
+    mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.on', () => call('media_player', 'volume_mute', { is_volume_muted: false }));
+    mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.off', () => call('media_player', 'volume_mute', { is_volume_muted: true }));
+    platform.tvLinks.set(player, { main: entityId, speaker: speakerEndpoint });
+    return;
+  }
+  platform.tvLinks.set(player, { main: entityId, speaker: '' });
 }
 
 /**
