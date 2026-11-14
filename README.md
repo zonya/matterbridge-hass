@@ -52,6 +52,8 @@ What is added (see [Config](#config)):
 - `deviceIdentityRules`: override the Matter vendor/product of individual and split entities (first matching rule wins, matched by domain and/or an entity_id substring). LG ThinQ only keeps devices whose identity exists in the CSA Distributed Compliance Ledger, for example vendorId 4142 with productId 8800 (smart plug) or 8192 (temperature and humidity sensor).
 - `entityNameOverrides`: set the name shown on the controller for entities whose Home Assistant name you do not want to change.
 - `entityDeviceTypes`: choose the Matter device type of a `switch` entity (matched by an entity_id substring): `tv` exposes it as a Basic Video Player (SmartThings shows a TV, on/off only) and `switch` as a Mounted On/Off Control (shown as a switch instead of a plug that is grouped with lights). The default stays the plug-in unit.
+- `tvRemoteEntities`: for a switch exposed as `tv`, name the media_player that should receive the remote keys (arrows, OK, back, home, menu, digits via the `webostv.button` service) and the play, pause, stop, next and previous buttons, so the controller shows a working remote for an LG webOS TV.
+- `vacuumCleanModes`: set to `false` to drop the optional RvcCleanMode cluster (the "Vacuum / Vacuum Max" selector) from vacuum entities that are not real vacuums, for example a 3D printer wrapped in a template vacuum.
 - `entityNameAsProductName`: use the entity name as the Matter product name instead of the domain (SmartThings shows the product name for server mode nodes).
 
 Example, everything that is a switch or sensor gets its own node and the LG identity:

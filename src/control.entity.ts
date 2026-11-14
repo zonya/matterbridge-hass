@@ -27,7 +27,7 @@
 import { basicVideoPlayer, colorTemperatureLight, dimmableLight, extendedColorLight, type MatterbridgeEndpoint, mountedOnOffControl, type PrimitiveTypes } from 'matterbridge';
 import { CYAN, db, debugStringify, nf, wr } from 'matterbridge/logger';
 import type { ActionContext } from 'matterbridge/matter';
-import { ColorControl, LevelControl } from 'matterbridge/matter/clusters';
+import { ColorControl, LevelControl, RvcCleanMode } from 'matterbridge/matter/clusters';
 import { type ClusterId, getClusterNameById } from 'matterbridge/matter/types';
 import { isValidArray, isValidBoolean, isValidNumber, isValidString } from 'matterbridge/utils';
 
@@ -66,6 +66,55 @@ import {
 } from './homeAssistant.js';
 import type { HomeAssistantPlatform } from './module.js';
 import type { MutableDevice } from './mutableDevice.js';
+
+/** Matter KeypadInput CecKeyCode to the button names of the Home Assistant webostv.button service. */
+const webosButtons: Record<number, string> = {
+  0: 'ENTER',
+  1: 'UP',
+  2: 'DOWN',
+  3: 'LEFT',
+  4: 'RIGHT',
+  9: 'HOME',
+  10: 'MENU',
+  11: 'MENU',
+  13: 'EXIT',
+  76: 'BACK',
+  32: '0',
+  33: '1',
+  34: '2',
+  35: '3',
+  36: '4',
+  37: '5',
+  38: '6',
+  39: '7',
+  40: '8',
+  41: '9',
+};
+
+/**
+ * Forward the KeypadInput keys and the MediaPlayback buttons of a switch exposed as a TV to a media_player (webOS keys use the webostv.button service).
+ *
+ * @param {HomeAssistantPlatform} platform - The Home Assistant platform instance
+ * @param {MutableDevice} mutableDevice - The mutable device
+ * @param {string} entityId - The switch entity id (the endpoint name)
+ * @param {string} player - The media_player entity that receives the commands
+ */
+function addTvRemoteHandlers(platform: HomeAssistantPlatform, mutableDevice: MutableDevice, entityId: string, player: string): void {
+  const call = (domain: string, service: string, data?: Record<string, string>): void => {
+    platform.ha.callService(domain, service, player, data).catch((error: unknown) => {
+      platform.log.warn(`TV remote: ${domain}.${service} for ${CYAN}${player}${wr} failed: ${error}`);
+    });
+  };
+  mutableDevice.addCommandHandler(entityId, 'KeypadInput.sendKey', (data) => {
+    const button = 'keyCode' in data.request ? webosButtons[data.request.keyCode] : undefined;
+    if (button) call('webostv', 'button', { button });
+  });
+  mutableDevice.addCommandHandler(entityId, 'MediaPlayback.play', () => call('media_player', 'media_play'));
+  mutableDevice.addCommandHandler(entityId, 'MediaPlayback.pause', () => call('media_player', 'media_pause'));
+  mutableDevice.addCommandHandler(entityId, 'MediaPlayback.stop', () => call('media_player', 'media_stop'));
+  mutableDevice.addCommandHandler(entityId, 'MediaPlayback.next', () => call('media_player', 'media_next_track'));
+  mutableDevice.addCommandHandler(entityId, 'MediaPlayback.previous', () => call('media_player', 'media_previous_track'));
+}
 
 /**
  * Look for supported binary_sensors of the current entity
@@ -123,6 +172,7 @@ export function addControlEntity(
     .filter((d) => d.domain === domain && d.withAttribute === undefined)
     .forEach((hassDomain) => {
       if (!hassDomain.deviceType || !hassDomain.clusterId) return;
+      if (domain === 'vacuum' && !platform.config.vacuumCleanModes && hassDomain.clusterId === RvcCleanMode.id) return;
       endpointName = entity.entity_id;
       // Optional device type override for a switch entity (config entityDeviceTypes): 'tv' = Basic Video Player (shown as a TV), 'switch' = Mounted On/Off Control (shown as a switch).
       const overrideKey = domain === 'switch' ? Object.keys(platform.config.entityDeviceTypes ?? {}).find((k) => entity.entity_id.includes(k)) : undefined;
@@ -134,6 +184,10 @@ export function addControlEntity(
         // A Basic Video Player needs MediaPlayback and KeypadInput. Their commands are ignored for a switch, only OnOff drives the entity.
         mutableDevice.addBasicVideoPlayer(endpointName);
         mutableDevice.addKeypadInput(endpointName);
+        // Optional: forward the remote keys and the media buttons to a media_player (config tvRemoteEntities), for example an LG webOS TV.
+        const remoteKey = Object.keys(platform.config.tvRemoteEntities ?? {}).find((k) => entity.entity_id.includes(k));
+        const player = remoteKey ? platform.config.tvRemoteEntities[remoteKey] : undefined;
+        if (player) addTvRemoteHandlers(platform, mutableDevice, entity.entity_id, player);
       }
       mutableDevice.addClusterServerIds(endpointName, hassDomain.clusterId);
       if (state.attributes && isValidString(state.attributes['friendly_name'])) mutableDevice.setFriendlyName(endpointName, state.attributes['friendly_name']);
@@ -268,7 +322,7 @@ export function addControlEntity(
     platform.log.debug(
       `# vacuum device ${CYAN}${entity.entity_id}${db} supported_features: ${CYAN}${getFeatureNames(VacuumEntityFeature, state.attributes.supported_features)}${db}`,
     );
-    mutableDevice.addVacuum(endpointName);
+    mutableDevice.addVacuum(endpointName, platform.config.vacuumCleanModes);
     // Map the Identify command to the vacuum.locate service if the vacuum supports it.
     // oxlint-disable-next-line no-bitwise
     if (state.attributes['supported_features'] && state.attributes['supported_features'] & VacuumEntityFeature.LOCATE) {

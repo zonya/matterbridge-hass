@@ -120,6 +120,8 @@ export interface HomeAssistantPlatformConfig extends PlatformConfig {
   deviceIdentityRules: DeviceIdentityRule[];
   entityNameOverrides: Record<string, string>;
   entityDeviceTypes: Record<string, 'tv' | 'switch'>;
+  tvRemoteEntities: Record<string, string>;
+  vacuumCleanModes: boolean;
   entityNameAsProductName: boolean;
   discardHiddenEntities: boolean;
   virtualControlLabel: string;
@@ -270,6 +272,10 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
     this.config.entityDeviceTypes = isValidObject(this.config.entityDeviceTypes, 1)
       ? Object.fromEntries(Object.entries(this.config.entityDeviceTypes).filter(([k, v]) => isValidString(k, 1) && (v === 'tv' || v === 'switch')))
       : {};
+    this.config.tvRemoteEntities = isValidObject(this.config.tvRemoteEntities, 1)
+      ? Object.fromEntries(Object.entries(this.config.tvRemoteEntities).filter(([k, v]) => isValidString(k, 1) && isValidString(v, 3) && v.startsWith('media_player.')))
+      : {};
+    this.config.vacuumCleanModes = isValidBoolean(this.config.vacuumCleanModes) ? this.config.vacuumCleanModes : true;
     this.config.entityNameAsProductName = isValidBoolean(this.config.entityNameAsProductName) ? this.config.entityNameAsProductName : false;
     this.config.discardHiddenEntities = isValidBoolean(this.config.discardHiddenEntities) ? this.config.discardHiddenEntities : false;
     this.config.virtualControlLabel = isValidString(this.config.virtualControlLabel, 1) ? this.config.virtualControlLabel : '';

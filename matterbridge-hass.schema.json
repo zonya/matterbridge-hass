@@ -246,6 +246,19 @@
       "additionalProperties": { "type": "string", "enum": ["tv", "switch"] },
       "default": {}
     },
+    "tvRemoteEntities": {
+      "title": "TV Remote Entities",
+      "description": "Map of switch entity_id substring (a switch exposed as \"tv\") to the media_player that receives the remote keys and media buttons, e.g. {\"living_room_tv\": \"media_player.lg_webos_tv\"}. Keys use the webostv.button service, so this fits LG webOS TVs.",
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "default": {}
+    },
+    "vacuumCleanModes": {
+      "title": "Vacuum Clean Modes",
+      "description": "Expose the optional RvcCleanMode cluster (Vacuum / Vacuum Max selector). Turn it off for a vacuum entity that is not a real vacuum, for example a 3D printer.",
+      "type": "boolean",
+      "default": true
+    },
     "entityNameAsProductName": {
       "title": "Entity Name As Product Name",
       "description": "Use the entity name as the Matter product name instead of the domain. Some controllers (Samsung SmartThings, LG ThinQ) show the product name for server mode nodes.",
