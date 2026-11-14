@@ -44,7 +44,7 @@ Features:
 
 ## About this fork (zonya/matterbridge-hass)
 
-This is a fork of [Luligu/matterbridge-hass](https://github.com/Luligu/matterbridge-hass) based on release 1.7.0. Upstream behavior is unchanged by default; every addition below is opt-in through the plugin config. The main reason is **LG ThinQ**: in my testing it does not work with devices behind a bridge, so every entity is exposed as its own Matter node (server mode), and ThinQ only keeps devices with an identity it knows. Samsung SmartThings also works well with the individual nodes. It was made to expose a Home Assistant boiler, switches and sensors to both.
+This is a fork of [Luligu/matterbridge-hass](https://github.com/Luligu/matterbridge-hass) based on release 1.7.0. Upstream behavior is unchanged by default; every addition below is opt-in through the plugin config. The main reason is **LG ThinQ**: in my testing it sees the devices behind a bridge but only adds the first one, so every entity is exposed as its own Matter node (server mode) and paired separately, and ThinQ only keeps devices with an identity it knows. Samsung SmartThings also works well with the individual nodes. It was made to expose a Home Assistant boiler, switches and sensors to both.
 
 What is added (see [Config](#config)):
 
