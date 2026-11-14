@@ -24,7 +24,17 @@
 /* oxlint-disable typescript/no-explicit-any */
 /* oxlint-disable typescript/restrict-template-expressions */
 
-import { basicVideoPlayer, colorTemperatureLight, dimmableLight, extendedColorLight, type MatterbridgeEndpoint, mountedOnOffControl, type PrimitiveTypes } from 'matterbridge';
+import {
+  basicVideoPlayer,
+  type CommandHandlerData,
+  colorTemperatureLight,
+  dimmableLight,
+  extendedColorLight,
+  type MatterbridgeEndpoint,
+  mountedOnOffControl,
+  type PrimitiveTypes,
+  speaker,
+} from 'matterbridge';
 import { CYAN, db, debugStringify, nf, wr } from 'matterbridge/logger';
 import type { ActionContext } from 'matterbridge/matter';
 import { ColorControl, LevelControl, RvcCleanMode } from 'matterbridge/matter/clusters';
@@ -76,7 +86,7 @@ const webosButtons: Record<number, string> = {
   4: 'RIGHT',
   9: 'HOME',
   10: 'MENU',
-  11: 'MENU',
+  11: 'INFO',
   13: 'EXIT',
   76: 'BACK',
   32: '0',
@@ -100,7 +110,7 @@ const webosButtons: Record<number, string> = {
  * @param {string} player - The media_player entity that receives the commands
  */
 function addTvRemoteHandlers(platform: HomeAssistantPlatform, mutableDevice: MutableDevice, entityId: string, player: string): void {
-  const call = (domain: string, service: string, data?: Record<string, string>): void => {
+  const call = (domain: string, service: string, data?: Record<string, string | number | boolean>): void => {
     platform.ha.callService(domain, service, player, data).catch((error: unknown) => {
       platform.log.warn(`TV remote: ${domain}.${service} for ${CYAN}${player}${wr} failed: ${error}`);
     });
@@ -114,6 +124,21 @@ function addTvRemoteHandlers(platform: HomeAssistantPlatform, mutableDevice: Mut
   mutableDevice.addCommandHandler(entityId, 'MediaPlayback.stop', () => call('media_player', 'media_stop'));
   mutableDevice.addCommandHandler(entityId, 'MediaPlayback.next', () => call('media_player', 'media_next_track'));
   mutableDevice.addCommandHandler(entityId, 'MediaPlayback.previous', () => call('media_player', 'media_previous_track'));
+
+  // A child Speaker endpoint (SmartThings shows a TV with a speaker): LevelControl is the volume and OnOff is the mute (on = not muted).
+  const speakerEndpoint = `${entityId}_speaker`;
+  mutableDevice.addDeviceTypes(speakerEndpoint, speaker);
+  mutableDevice.setFriendlyName(speakerEndpoint, 'Speaker');
+  mutableDevice.addOnOff(speakerEndpoint, true);
+  mutableDevice.addClusterServerIds(speakerEndpoint, LevelControl.id);
+  const setVolume = (data: CommandHandlerData): void => {
+    if ('level' in data.request && typeof data.request.level === 'number') call('media_player', 'volume_set', { volume_level: Math.min(1, Math.max(0, data.request.level / 254)) });
+  };
+  mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevelWithOnOff', setVolume);
+  mutableDevice.addCommandHandler(speakerEndpoint, 'LevelControl.moveToLevel', setVolume);
+  mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.on', () => call('media_player', 'volume_mute', { is_volume_muted: false }));
+  mutableDevice.addCommandHandler(speakerEndpoint, 'OnOff.off', () => call('media_player', 'volume_mute', { is_volume_muted: true }));
+  platform.tvLinks.set(player, { main: entityId, speaker: speakerEndpoint });
 }
 
 /**

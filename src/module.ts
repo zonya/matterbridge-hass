@@ -40,7 +40,7 @@ import {
 } from 'matterbridge';
 import { type AnsiLogger, CYAN, db, debugStringify, dn, er, hk, idn, ign, type LogLevel, nf, or, rs, wr, YELLOW } from 'matterbridge/logger';
 import type { ActionContext } from 'matterbridge/matter';
-import { BridgedDeviceBasicInformation, ColorControl, LevelControl, ModeSelect, OnOff, PowerSource, Thermostat, WindowCovering } from 'matterbridge/matter/clusters';
+import { BridgedDeviceBasicInformation, ColorControl, LevelControl, MediaPlayback, ModeSelect, OnOff, PowerSource, Thermostat, WindowCovering } from 'matterbridge/matter/clusters';
 import { type ClusterId, getClusterNameById } from 'matterbridge/matter/types';
 import { deepEqual, fireAndForget, getErrorMessage, inspectError, isValidArray, isValidBoolean, isValidNumber, isValidObject, isValidString, waiter } from 'matterbridge/utils';
 
@@ -191,6 +191,8 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
   /** Supported helper domains */
   readonly supportedHelpersDomains = ['automation', 'scene', 'script', 'input_boolean', 'input_button'];
   /** Supported core domains */
+  /** media_player entity of a TV exposed from a switch (config tvRemoteEntities) => the endpoints that mirror its playback state and volume. */
+  readonly tvLinks = new Map<string, { main: string; speaker: string }>();
   readonly supportedCoreDomains = ['switch', 'light', 'lock', 'fan', 'cover', 'climate', 'valve', 'vacuum', 'remote', 'input_select', 'select', 'media_player']; // 'input_select' is an helper but we support it like core
   /** Supported other domains */
   readonly supportedOtherDomains = ['sensor', 'binary_sensor', 'event', 'button'];
@@ -1013,6 +1015,10 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
         this.log.debug(`Configuring state of entity ${CYAN}${state.entity_id}${db}...`);
         await this.updateHandler(entity.device_id, entity.entity_id, state, state);
       }
+      for (const [player] of this.tvLinks) {
+        const playerState = this.ha.hassStates.get(player);
+        if (playerState) await this.updateTvLink(player, playerState);
+      }
       this.log.info(`Platform ${this.config.name} configured successfully`);
     } catch (error) {
       this.log.error(`Error configuring platform ${idn}${this.config.name}${rs}${er}: ${getErrorMessage(error)}`);
@@ -1355,7 +1361,35 @@ export class HomeAssistantPlatform extends MatterbridgeDynamicPlatform {
     }
   }
 
+  /**
+   * Mirror the playback state, volume and mute of a TV media_player on the TV endpoints created from a switch (config tvRemoteEntities).
+   *
+   * @param {string} player - The media_player entity id.
+   * @param {HassState} state - The new state of the media_player.
+   */
+  private async updateTvLink(player: string, state: HassState): Promise<void> {
+    const link = this.tvLinks.get(player);
+    if (!link) return;
+    const device = this.matterbridgeDevices.get(link.main);
+    if (!device) return;
+    const find = (name: string): MatterbridgeEndpoint | undefined => device.getChildEndpointById(name.replaceAll('.', ''));
+    const main = find(link.main) ?? device;
+    const playback =
+      state.state === 'playing' ? MediaPlayback.PlaybackState.Playing : state.state === 'paused' ? MediaPlayback.PlaybackState.Paused : MediaPlayback.PlaybackState.NotPlaying;
+    await main.setAttribute(MediaPlayback.id, 'currentState', playback, main.log);
+    const speakerEndpoint = find(link.speaker);
+    if (!speakerEndpoint) return;
+    const volume = state.attributes['volume_level'];
+    if (isValidNumber(volume, 0, 1)) await speakerEndpoint.setAttribute(LevelControl.id, 'currentLevel', Math.min(254, Math.max(1, Math.round(volume * 254))), speakerEndpoint.log);
+    const muted = state.attributes['is_volume_muted'];
+    if (isValidBoolean(muted)) await speakerEndpoint.setAttribute(OnOff.id, 'onOff', !muted, speakerEndpoint.log);
+  }
+
   async updateHandler(deviceId: string | null, entityId: string, old_state: HassState, new_state: HassState): Promise<void> {
+    if (this.tvLinks.has(entityId)) {
+      await this.updateTvLink(entityId, new_state);
+      return;
+    }
     const matterbridgeDevice = this.matterbridgeDevices.has(entityId) ? this.matterbridgeDevices.get(entityId) : this.matterbridgeDevices.get(deviceId ?? entityId);
     if (!matterbridgeDevice) {
       if (this.endpointNames.get(entityId) !== undefined) this.log.debug(`Update handler: Matterbridge device ${deviceId ?? entityId} for ${entityId} not found: skipping it`);
